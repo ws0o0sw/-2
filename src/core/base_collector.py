@@ -407,6 +407,8 @@ class BaseCollector(ABC):
         dated_links = []
         all_links = soup.find_all("a", href=True)
 
+        self.logger.debug(f"找到 {len(all_links)} 个链接，开始提取日期...")
+
         for link in all_links:
             href = link.get("href")
             text = link.get_text(strip=True)
@@ -439,6 +441,16 @@ class BaseCollector(ABC):
                         "is_today": is_today,
                         "text": text,
                     }
+                )
+
+        self.logger.debug(f"提取到 {len(dated_links)} 个带日期的链接")
+
+        # 调试：显示前几个带日期的链接
+        if dated_links:
+            sample = dated_links[:3]
+            for item in sample:
+                self.logger.debug(
+                    f"  日期链接: {item['date'].strftime('%Y-%m-%d')} - {item['url'][:60]}..."
                 )
 
         # 按日期排序：今天的在前，其次按日期新旧
