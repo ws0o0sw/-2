@@ -14,6 +14,7 @@ import sys
 import os
 import subprocess
 import time
+import re
 import yaml
 from typing import List, Dict, Any, Tuple
 
@@ -816,7 +817,7 @@ class SubsCheckTester:
             )
 
             # 实时输出日志
-            return self._monitor_process(timeout, phase=1)
+            return self._monitor_process(timeout, phase=1, node_count=node_count)
 
         except Exception as e:
             self.logger.error(f"阶段1测试失败: {str(e)}")
@@ -900,13 +901,15 @@ class SubsCheckTester:
             )
 
             # 实时输出日志
-            return self._monitor_process(timeout, phase=2)
+            return self._monitor_process(timeout, phase=2, node_count=node_count)
 
         except Exception as e:
             self.logger.error(f"阶段2测试失败: {str(e)}")
             return False, str(e)
 
-    def _monitor_process(self, timeout: int, phase: int = 1) -> Tuple[bool, str]:
+    def _monitor_process(
+        self, timeout: int, phase: int = 1, node_count: int = 0
+    ) -> Tuple[bool, str]:
         """监控进程输出"""
         try:
             start_time = time.time()
@@ -928,19 +931,78 @@ class SubsCheckTester:
                     self.process.wait(timeout=10)
                     return False, f"阶段{phase}超时"
 
-                # 解析进度
-                import re
-
-                progress_match = re.search(
-                    r"\[.*?\]\s+(\d+\.?\d*)%\s+\((\d+)/(\d+)\)", last_line
-                )
+                # 解析进度 - 适配 subs-check 多种输出格式
                 current_progress = 0
                 tested_count = 0
-                total_count = 0
-                if progress_match:
-                    current_progress = float(progress_match.group(1))
-                    tested_count = int(progress_match.group(2))
-                    total_count = int(progress_match.group(3))
+                total_count = node_count if node_count else 0
+
+                # 尝试多种进度格式
+                patterns = [
+                    r"\[.*?\]\s+(\d+\.?\d*)%\s+\((\d+)/(\d+)\)",  # 格式1: [时间] XX% (X/X)
+                    r"进度[:：]\s*(\d+\.?\d*)%\s*\((?:(\d+)/)?(\d+)\)?",  # 格式2: 进度: XX% (X/X)
+                    r"(\d+\.?\d*)%\s*\((?:(\d+)/)?(\d+)\)",  # 通用格式: XX% (X/X)
+                    r"(\d+\.?\d*)%",  # 简单格式: XX%
+                ]
+
+                for pattern in patterns:
+                    match = re.search(pattern, last_line)
+                    if match:
+                        groups = match.groups()
+                        current_progress = float(groups[0])
+                        if len(groups) >= 3 and groups[1]:
+                            tested_count = int(groups[1])
+                        elif len(groups) >= 3:
+                            tested_count = int(current_progress / 100 * int(groups[2]))
+                            total_count = int(groups[2])
+                        elif len(groups) == 2 and groups[1]:
+                            tested_count = int(groups[1])
+                        break
+
+                # 节点数量估算：如果没有解析到进度，根据运行时间估算
+                if current_progress == 0 and total_count > 0:
+                    elapsed = time.time() - start_time
+                    estimated_tested = min(int(elapsed * 5), total_count)
+                    if estimated_tested > last_tested_index:
+                        tested_count = estimated_tested
+                        current_progress = tested_count / total_count * 100
+
+                # 记录新节点的开始测试时间
+                if tested_count > last_tested_index and phase == 2:
+                    node_test_times[tested_count] = time.time()
+                    last_tested_index = tested_count
+                    self.performance_monitor.record_node_processed()
+
+                # 检查是否完成
+                if current_progress >= 95.0 and tested_count >= total_count * 0.95:
+                    self.logger.info(
+                        f"检测到阶段{phase}测试完成（进度: {current_progress:.1f}%，测试: {tested_count}/{total_count}），准备终止进程"
+                    )
+                    break
+
+                if current_progress >= 99.9 or tested_count >= total_count:
+                    self.logger.info(
+                        f"检测到阶段{phase}测试完成（进度: {current_progress:.1f}%，测试: {tested_count}/{total_count}），准备终止进程"
+                    )
+                    break
+
+                # 如果没有匹配到进度，但有节点数量信息，尝试从其他输出中提取
+                if current_progress == 0:
+                    # 尝试解析 "可用节点数量: X" 或 "测试 X/Y" 这样的信息
+                    available_match = re.search(r"可用节点数量[:：]\s*(\d+)", last_line)
+                    if available_match:
+                        tested_count = int(available_match.group(1))
+                        current_progress = (
+                            (tested_count / total_count * 100) if total_count > 0 else 0
+                        )
+
+                # 节点数量估算：如果没有解析到进度，根据运行时间估算
+                if current_progress == 0 and total_count > 0:
+                    elapsed = time.time() - start_time
+                    # 假设每秒可以测试 5-10 个节点
+                    estimated_tested = min(int(elapsed * 5), total_count)
+                    if estimated_tested > last_tested_index:
+                        tested_count = estimated_tested
+                        current_progress = tested_count / total_count * 100
 
                     # 记录新节点的开始测试时间
                     if tested_count > last_tested_index and phase == 2:
@@ -963,11 +1025,21 @@ class SubsCheckTester:
                         )
                         break
 
-                # 检查静默超时 - 参考SubsCheck标准优化
+                # 检查静默超时 - 放宽超时时间以适应大量节点测试
+                # 阶段1需要更长时间因为节点数量多（1269个节点）
                 if phase == 1:
-                    silent_timeout = 120  # 阶段1：120秒无输出结束（更宽松）
+                    # 根据节点数量动态调整静默超时
+                    if node_count > 1000:
+                        silent_timeout = 300  # 大量节点：5分钟
+                    elif node_count > 500:
+                        silent_timeout = 240  # 中等数量：4分钟
+                    else:
+                        silent_timeout = 180  # 少量节点：3分钟
                 else:
-                    silent_timeout = 240  # 阶段2：240秒无输出结束（更宽松）
+                    if node_count > 100:
+                        silent_timeout = 300  # 阶段2媒体检测更慢
+                    else:
+                        silent_timeout = 240
 
                 silent_elapsed = time.time() - last_output_time
 
@@ -1121,7 +1193,7 @@ class SubsCheckTester:
                                                 # 新格式：时间点 节点进度 节点名称 测试项状态 测试耗时
                                                 progress_str = (
                                                     f"{current_progress:.1f}% ({tested_count}/{total_count})"
-                                                    if progress_match
+                                                    if current_progress > 0
                                                     else "N/A"
                                                 )
                                                 duration_str = (
@@ -1134,7 +1206,7 @@ class SubsCheckTester:
                                                     flush=True,
                                                 )
                                             elif (
-                                                progress_match
+                                                current_progress > 0
                                                 and current_progress
                                                 != last_progress_displayed
                                             ):
@@ -1163,7 +1235,7 @@ class SubsCheckTester:
                                             )
                                             # 阶段1只显示进度，只在进度变化时显示
                                             if (
-                                                progress_match
+                                                current_progress > 0
                                                 and current_progress
                                                 != last_progress_displayed
                                             ):
@@ -1222,7 +1294,7 @@ class SubsCheckTester:
                                         # 新格式：时间点 节点进度 节点名称 测试项状态 测试耗时
                                         progress_str = (
                                             f"{current_progress:.1f}% ({tested_count}/{total_count})"
-                                            if progress_match
+                                            if current_progress > 0
                                             else "N/A"
                                         )
                                         duration_str = (
