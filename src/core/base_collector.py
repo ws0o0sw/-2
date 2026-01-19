@@ -68,7 +68,7 @@ class BaseCollector(ABC):
                 "User-Agent": browser_ua,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "gzip, deflate",
                 "Connection": "keep-alive",
                 "Upgrade-Insecure-Requests": "1",
                 "Sec-Fetch-Dest": "document",
@@ -279,7 +279,7 @@ class BaseCollector(ABC):
             self.last_article_url = article_url
 
             # 访问文章页面并提取订阅链接
-            # 对于 BROWSER_ONLY_SITES，先尝试代理，失败后再使用浏览器
+            # 对于 BROWSER_ONLY_SITES，直接使用浏览器访问（不使用代理）
             from config.websites import BROWSER_ONLY_SITES
 
             site_key = self.site_config.get(
@@ -287,25 +287,14 @@ class BaseCollector(ABC):
             )
 
             if site_key in BROWSER_ONLY_SITES:
-                # 先尝试代理访问
-                try:
-                    self.logger.info(f"尝试代理访问文章页面: {article_url}")
-                    response = self._make_request(article_url)
-                    if response and len(response.text) > 100:
-                        content = response.text
-                        self.logger.info(
-                            f"代理访问成功，获取到 {len(content)} 字节内容"
-                        )
-                    else:
-                        raise Exception("代理返回内容过短或为空")
-                except Exception as proxy_error:
-                    self.logger.warning(
-                        f"代理访问失败: {str(proxy_error)}，尝试浏览器访问"
-                    )
-                    # 临时禁用代理
-                    original_proxies = self.session.proxies
-                    self.session.proxies = {"http": None, "https": None}
+                # 直接使用浏览器访问（跳过代理尝试）
+                self.logger.info(f"使用浏览器访问文章页面: {article_url}")
 
+                # 临时禁用代理
+                original_proxies = self.session.proxies
+                self.session.proxies = {"http": None, "https": None}
+
+                try:
                     with sync_playwright() as p:
                         browser = p.chromium.launch(
                             headless=True,
@@ -317,11 +306,17 @@ class BaseCollector(ABC):
                             locale="zh-CN",
                         )
                         page = context.new_page()
-                        # 增加超时时间到 90 秒
-                        page.goto(article_url, wait_until="networkidle", timeout=90000)
+                        # 使用 domcontentloaded 避免 networkidle 超时
+                        page.goto(
+                            article_url, wait_until="domcontentloaded", timeout=90000
+                        )
+                        # 等待额外时间让JS执行
+                        page.wait_for_timeout(5000)
                         content = page.content()
                         browser.close()
 
+                    self.logger.info(f"浏览器访问成功，获取到 {len(content)} 字节内容")
+                finally:
                     # 恢复代理设置
                     self.session.proxies = original_proxies
             else:
@@ -350,28 +345,54 @@ class BaseCollector(ABC):
 
     def get_latest_article_url(self, target_date=None):
         """获取文章URL，支持指定日期"""
+        from config.websites import BROWSER_ONLY_SITES
+
         try:
-            self.logger.info(f"访问网站: {self.base_url}")
-            response = self._make_request(self.base_url)
-            soup = BeautifulSoup(response.text, "html.parser")
+            site_key = self.site_config.get(
+                "collector_key", self.site_config.get("name")
+            )
+            use_browser_directly = site_key in BROWSER_ONLY_SITES
 
-            article_url = self._find_article_from_soup(soup, target_date)
+            self.logger.info(
+                f"DEBUG: site_key='{site_key}', BROWSER_ONLY_SITES={BROWSER_ONLY_SITES}, use_browser_directly={use_browser_directly}"
+            )
 
-            if not article_url and self.session.proxies.get("http"):
-                self.logger.warning(f"使用代理未找到文章，尝试禁用代理直接访问")
-                self.session.proxies = {"http": None, "https": None}
-                self.logger.info(f"访问网站: {self.base_url} (直接连接)")
+            if use_browser_directly:
+                self.logger.info(
+                    f"使用浏览器直接访问 (BROWSER_ONLY_SITES): {self.base_url}"
+                )
+                article_url = self._fetch_with_playwright(target_date)
+            else:
+                self.logger.info(f"访问网站: {self.base_url}")
                 response = self._make_request(self.base_url)
                 soup = BeautifulSoup(response.text, "html.parser")
+
                 article_url = self._find_article_from_soup(soup, target_date)
 
-            if not article_url:
-                self.logger.warning(f"{self.site_name}: 使用浏览器自动化重试")
-                article_url = self._fetch_with_playwright(target_date)
+                if not article_url and self.session.proxies.get("http"):
+                    self.logger.warning(f"使用代理未找到文章，尝试禁用代理直接访问")
+                    self.session.proxies = {"http": None, "https": None}
+                    self.logger.info(f"访问网站: {self.base_url} (直接连接)")
+                    response = self._make_request(self.base_url)
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    article_url = self._find_article_from_soup(soup, target_date)
+
+                if not article_url:
+                    self.logger.warning(f"{self.site_name}: 使用浏览器自动化重试")
+                    article_url = self._fetch_with_playwright(target_date)
 
             if not article_url:
                 self.logger.warning(f"{self.site_name}: 未找到最新文章")
                 return None
+
+            return article_url
+
+        except Exception as e:
+            self.logger.error(f"{self.site_name}: 获取文章URL失败 - {str(e)}")
+            import traceback
+
+            self.logger.error(f"详细错误: {traceback.format_exc()}")
+            return None
 
             return article_url
 
@@ -409,24 +430,68 @@ class BaseCollector(ABC):
 
         self.logger.info(f"找到 {len(all_links)} 个链接，开始提取日期...")
 
+        # 保存HTML内容用于调试（问题网站）
+        from config.websites import BROWSER_ONLY_SITES
+
+        site_key = self.site_config.get("collector_key", self.site_config.get("name"))
+        if site_key in BROWSER_ONLY_SITES:
+            import os
+            from datetime import datetime as dt
+
+            debug_dir = os.path.join(os.getcwd(), "data", "debug")
+            os.makedirs(debug_dir, exist_ok=True)
+            debug_file = os.path.join(
+                debug_dir,
+                f"debug_{self.site_name}_{dt.now().strftime('%Y%m%d_%H%M%S')}.html",
+            )
+            try:
+                html_content = str(soup)
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write(html_content)
+                self.logger.info(
+                    f"💾 保存调试HTML到: {debug_file} ({len(html_content)} bytes)"
+                )
+            except Exception as e:
+                self.logger.warning(f"保存调试HTML失败: {str(e)}")
+
+        extracted_count = 0
+        exclusion_reasons = {}  # 统计排除原因
+
         for link in all_links:
             href = link.get("href")
             text = link.get_text(strip=True)
+            title = link.get("title", "")  # 提取title属性，可能包含日期
 
             if not href:
                 continue
 
             # 排除导航链接
+            excluded = False
+            exclusion_reason = ""
             if any(
                 x in href
                 for x in ["category", "tag", "page", "search", "about", "feed"]
             ):
+                excluded = True
+                exclusion_reason = "navigation link"
+            elif href.startswith("#"):
+                excluded = True
+                exclusion_reason = "anchor link"
+            elif len(href) < 10:
+                excluded = True
+                exclusion_reason = "href too short"
+
+            if excluded:
+                exclusion_reasons[exclusion_reason] = (
+                    exclusion_reasons.get(exclusion_reason, 0) + 1
+                )
                 continue
 
-            # 尝试从链接或文本中提取日期
-            link_date = self._extract_date_from_text(href, text)
+            # 尝试从链接、文本或title中提取日期
+            link_date = self._extract_date_from_text(href, text, title)
 
             if link_date is not None:
+                extracted_count += 1
                 # 计算与今天的天数差
                 days_diff = abs((link_date.date() - target_date.date()).days)
 
@@ -443,15 +508,29 @@ class BaseCollector(ABC):
                     }
                 )
 
-        self.logger.info(f"提取到 {len(dated_links)} 个带日期的链接")
+        self.logger.info(
+            f"提取到 {len(dated_links)} 个带日期的链接 (共尝试提取 {extracted_count} 个)"
+        )
+
+        # 显示排除统计
+        if exclusion_reasons:
+            self.logger.info(f"链接排除统计: {exclusion_reasons}")
 
         # 显示前几个带日期的链接
         if dated_links:
-            sample = dated_links[:3]
+            sample = dated_links[:5]
             for item in sample:
                 self.logger.info(
-                    f"  日期链接: {item['date'].strftime('%Y-%m-%d')} - {item['url'][:80]}..."
+                    f"  📅 日期链接: {item['date'].strftime('%Y-%m-%d')} - {item['url'][:80]}... (文本: {item['text'][:30] if item['text'] else 'N/A'})"
                 )
+        else:
+            # 显示一些样例链接，帮助诊断问题
+            self.logger.warning(f"未找到带日期的链接，显示前10个链接样例:")
+            sample_links = all_links[:10]
+            for i, link in enumerate(sample_links):
+                href = link.get("href", "")
+                text = link.get_text(strip=True)[:50]
+                self.logger.warning(f"  [{i + 1}] {href[:80]}... (文本: {text})")
 
         # 按日期排序：今天的在前，其次按日期新旧
         dated_links.sort(key=lambda x: (not x["is_today"], x["days_diff"]))
@@ -522,8 +601,8 @@ class BaseCollector(ABC):
         self.logger.warning(f"未找到文章链接")
         return None
 
-    def _extract_date_from_text(self, href, text):
-        """从链接URL或文本中提取日期"""
+    def _extract_date_from_text(self, href, text, title=""):
+        """从链接URL、文本或title属性中提取日期"""
         import re
         from datetime import datetime
 
@@ -534,31 +613,74 @@ class BaseCollector(ABC):
             r"/(\d{4})/(\d{1,2})/(\d{1,2})/",  # /2026/1/19/ 或 /2026/01/19/
             r"/(\d{4})-(\d{1,2})-(\d{1,2})\.",  # /2026-1-19. 或 /2026-01-19.
             r"/(\d{4})/(\d{1,2})/(\d{1,2})\.",  # /2026/1/19. 或 /2026/01/19.
-            # 文本中的日期格式
+            # 文本中的日期格式 - 中文格式
+            r"(\d{1,2})月(\d{1,2})日",  # 1月19日 或 01月19日
             r"(\d{4})年(\d{1,2})月(\d{1,2})日",  # 2026年1月19日
-            r"(\d{4})\.(\d{1,2})\.(\d{1,2})",  # 2026.01.19 或 2026.1.19
             r"(\d{2})-(\d{1,2})-(\d{1,2})",  # 26-01-19 (假设21世纪)
+            r"(\d{2})\.(\d{1,2})\.(\d{1,2})",  # 26.01.19 (假设21世纪)
         ]
 
-        combined_text = f"{href} {text}"
+        # 合并所有可用文本
+        combined_text = f"{href} {text} {title}"
+
+        today = datetime.now()
 
         for pattern in date_patterns:
             match = re.search(pattern, combined_text)
             if match:
                 try:
                     groups = match.groups()
-                    if len(groups) == 3:
-                        year = int(groups[0])
-                        month = int(groups[1])
-                        day = int(groups[2])
+                    groups_len = len(groups)
 
-                        # 处理两位数年份
-                        if year < 100:
-                            year = 2000 + year
+                    year = None
+                    month = None
+                    day = None
 
-                        # 验证日期有效性
-                        if 2020 <= year <= 2030 and 1 <= month <= 12 and 1 <= day <= 31:
-                            return datetime(year, month, day)
+                    # 根据模式和组数处理
+                    if groups_len == 3:
+                        # 3个组：可能是 URL 格式或 "年/月/日" 中文格式
+                        if "月" in pattern and "年" in pattern:
+                            # 2026年1月19日 格式
+                            year, month, day = (
+                                int(groups[0]),
+                                int(groups[1]),
+                                int(groups[2]),
+                            )
+                        else:
+                            # URL 格式: 2026-1-19 或 26-01-19
+                            year = int(groups[0])
+                            month = int(groups[1])
+                            day = int(groups[2])
+
+                            # 处理两位数年份
+                            if year < 100:
+                                year = 2000 + year
+
+                    elif groups_len == 2:
+                        # 2个组：只有月日的中文格式 (如 1月18日)
+                        if "月" in pattern:
+                            year = today.year
+                            month = int(groups[0])
+                            day = int(groups[1])
+                        else:
+                            # 其他2组格式，不处理
+                            continue
+
+                    else:
+                        # 不支持的组数
+                        continue
+
+                    # 验证日期有效性
+                    if (
+                        year
+                        and month
+                        and day
+                        and 2020 <= year <= 2030
+                        and 1 <= month <= 12
+                        and 1 <= day <= 31
+                    ):
+                        return datetime(year, month, day)
+
                 except (ValueError, TypeError):
                     continue
 
@@ -584,7 +706,10 @@ class BaseCollector(ABC):
                     locale="zh-CN",
                 )
                 page = context.new_page()
-                page.goto(self.base_url, wait_until="networkidle", timeout=30000)
+                # 使用 domcontentloaded 避免 networkidle 超时
+                page.goto(self.base_url, wait_until="domcontentloaded", timeout=30000)
+                # 等待额外时间让JS执行
+                page.wait_for_timeout(3000)
                 content = page.content()
                 browser.close()
 
@@ -592,8 +717,36 @@ class BaseCollector(ABC):
             self.session.proxies = original_proxies
             self.logger.debug("恢复代理设置")
 
+            self.logger.info(f"浏览器获取到 {len(content)} 字节内容")
+
             soup = BeautifulSoup(content, "html.parser")
+
+            # 保存调试HTML
+            import os
+            from datetime import datetime as dt
+
+            debug_dir = os.path.join(os.getcwd(), "data", "debug")
+            os.makedirs(debug_dir, exist_ok=True)
+            debug_file = os.path.join(
+                debug_dir,
+                f"debug_{self.site_name}_{dt.now().strftime('%Y%m%d_%H%M%S')}.html",
+            )
+            try:
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write(content)
+                self.logger.info(
+                    f"💾 保存调试HTML到: {debug_file} ({len(content)} bytes)"
+                )
+            except Exception as e:
+                self.logger.warning(f"保存调试HTML失败: {str(e)}")
+
             article_url = self._find_article_from_soup(soup, target_date)
+
+            if article_url:
+                self.logger.info(f"✅ 找到文章URL: {article_url}")
+            else:
+                self.logger.warning(f"❌ 未找到文章URL")
+
             return article_url
 
         except Exception as e:
@@ -725,6 +878,8 @@ class BaseCollector(ABC):
 
             # 方式2: 尝试Base64解码
             try:
+                import base64
+
                 # 补齐base64 padding
                 padded_content = content + "=" * (-len(content) % 4)
                 decoded_content = base64.b64decode(padded_content).decode(
@@ -734,9 +889,27 @@ class BaseCollector(ABC):
                 if nodes:
                     self.logger.info(f"Base64解码后获取到 {len(nodes)} 个节点")
                     all_nodes.extend(nodes)
-            except:
+                else:
+                    # 尝试双重Base64解码（某些订阅链接使用双重编码）
+                    try:
+                        import base64
+
+                        decoded_bytes = base64.b64decode(padded_content)
+                        double_padded = decoded_bytes + b"=" * (-len(decoded_bytes) % 4)
+                        double_decoded = base64.b64decode(double_padded).decode(
+                            "utf-8", errors="ignore"
+                        )
+                        nodes = self._extract_nodes_from_text(double_decoded)
+                        if nodes:
+                            self.logger.info(
+                                f"双重Base64解码后获取到 {len(nodes)} 个节点"
+                            )
+                            all_nodes.extend(nodes)
+                    except Exception:
+                        pass
+            except Exception as e:
                 # 不是Base64格式，跳过
-                pass
+                self.logger.debug(f"Base64解码失败: {str(e)}")
 
             # 方式3: 尝试URL解码
             try:
@@ -764,13 +937,27 @@ class BaseCollector(ABC):
 
                 # 尝试Base64解码单行
                 try:
+                    import base64
+
                     padded_line = line + "=" * (-len(line) % 4)
                     decoded_line = base64.b64decode(padded_line).decode(
                         "utf-8", errors="ignore"
                     )
                     nodes = self._extract_nodes_from_text(decoded_line)
                     all_nodes.extend(nodes)
-                except:
+
+                    # 尝试双重Base64解码
+                    try:
+                        decoded_bytes = base64.b64decode(padded_line)
+                        double_padded = decoded_bytes + b"=" * (-len(decoded_bytes) % 4)
+                        double_decoded = base64.b64decode(double_padded).decode(
+                            "utf-8", errors="ignore"
+                        )
+                        nodes = self._extract_nodes_from_text(double_decoded)
+                        all_nodes.extend(nodes)
+                    except Exception:
+                        pass
+                except Exception:
                     pass
 
             # 方式5: 尝试解析 YAML/JSON 格式（Clash配置）

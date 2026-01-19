@@ -152,7 +152,7 @@ class SubscriptionParser:
                         "User-Agent": ua,
                         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                         "Accept-Language": "zh-CN,zh;q=0.8,en;q=0.6",
-                        "Accept-Encoding": "gzip, deflate, br",
+                        "Accept-Encoding": "gzip, deflate",
                         "Connection": "keep-alive",
                     }
                 )
@@ -269,7 +269,7 @@ class SubscriptionParser:
         return []
 
     def _parse_base64_content(self, content: str) -> List[str]:
-        """解析Base64编码的内容"""
+        """解析Base64编码的内容，支持单层和双层编码"""
         try:
             # 标准化Base64内容
             clean_content = content.strip()
@@ -288,6 +288,22 @@ class SubscriptionParser:
             if nodes:
                 self.logger.debug(f"Base64解码成功，提取到 {len(nodes)} 个节点")
                 return nodes
+
+            # 尝试双重Base64解码（某些订阅使用双层编码）
+            try:
+                double_padding = (-len(decoded_bytes)) % 4
+                if double_padding:
+                    double_content = decoded_bytes + b"=" * double_padding
+                else:
+                    double_content = decoded_bytes
+                double_decoded = base64.b64decode(double_content)
+                double_text = double_decoded.decode("utf-8", errors="ignore")
+                nodes = self._extract_nodes_from_text(double_text)
+                if nodes:
+                    self.logger.debug(f"双重Base64解码成功，提取到 {len(nodes)} 个节点")
+                    return nodes
+            except Exception:
+                pass
 
         except Exception as e:
             self.logger.debug(f"Base64解码失败: {str(e)}")
