@@ -15,7 +15,7 @@ class IntelligentTimeoutManager:
         self.performance_history = []
 
     def calculate_optimal_timeout(
-        self, phase: int, node_count: int, avg_latency: float = None
+        self, phase: int, node_count: int, avg_latency: float | None = None
     ) -> int:
         """计算最优超时时间"""
         if avg_latency is None:
@@ -51,7 +51,7 @@ class IntelligentTimeoutManager:
                 return 15000  # 超慢响应
 
     def calculate_optimal_concurrency(
-        self, node_count: int, phase: int, avg_latency: float = None
+        self, node_count: int, phase: int, avg_latency: float | None = None
     ) -> int:
         """计算最优并发数"""
         if avg_latency is None:
@@ -99,37 +99,59 @@ class IntelligentTimeoutManager:
         remaining_nodes: int,
         silent_elapsed: int,
         phase: int,
-        last_update_time: float = None,
-    ) -> Tuple[bool, str]:
+        last_update_time: float | None = None,
+    ) -> tuple[bool, str]:
         """智能判断是否应该继续等待"""
 
-        # 基于进度的分层等待策略
+        # 基于进度的分层等待策略 - 放宽限制
         if phase == 1:
-            # 阶段1：更严格的策略
+            # 阶段1：大量节点测试需要更长时间
             if progress >= 98.5 and remaining_nodes <= 3:
                 return (
                     True,
                     f"阶段1接近完成({progress:.1f}%)，剩余{remaining_nodes}个节点，继续等待...",
                 )
-            elif progress >= 95.0 and remaining_nodes <= 5:
-                max_wait = 120  # 2分钟
+            elif progress >= 95.0 and remaining_nodes <= 10:
+                max_wait = 180  # 3分钟
                 if silent_elapsed < max_wait:
                     return (
                         True,
                         f"阶段1高进度({progress:.1f}%)，剩余{remaining_nodes}个节点，继续等待...",
                     )
-            elif progress >= 90.0 and remaining_nodes <= 10:
-                max_wait = 90  # 1.5分钟
+            elif progress >= 85.0 and remaining_nodes <= 30:
+                max_wait = 240  # 4分钟
                 if silent_elapsed < max_wait:
                     return (
                         True,
                         f"阶段1中等进度({progress:.1f}%)，剩余{remaining_nodes}个节点，继续等待...",
                     )
+            elif progress >= 70.0 and remaining_nodes <= 50:
+                max_wait = 300  # 5分钟
+                if silent_elapsed < max_wait:
+                    return (
+                        True,
+                        f"阶段1一般进度({progress:.1f}%)，剩余{remaining_nodes}个节点，继续等待...",
+                    )
+            elif progress >= 50.0 and remaining_nodes <= 100:
+                max_wait = 360  # 6分钟
+                if silent_elapsed < max_wait:
+                    return (
+                        True,
+                        f"阶段1低进度({progress:.1f}%)，继续等待...",
+                    )
             else:
-                return (
-                    False,
-                    f"阶段1进度较低({progress:.1f}%)或剩余节点过多({remaining_nodes})，可能卡住",
-                )
+                # 即使进度很低，也给更长的等待时间
+                max_wait = 420  # 7分钟
+                if silent_elapsed < max_wait:
+                    return (
+                        True,
+                        f"阶段1进度({progress:.1f}%)较低，继续等待...",
+                    )
+                else:
+                    return (
+                        False,
+                        f"阶段1超时({int(silent_elapsed)}秒)，剩余{remaining_nodes}个节点",
+                    )
 
         else:
             # 阶段2：更宽松的策略（媒体检测通常较慢）
@@ -164,6 +186,9 @@ class IntelligentTimeoutManager:
                     False,
                     f"阶段2进度较低({progress:.1f}%)或剩余节点过多({remaining_nodes})，可能需要终止",
                 )
+
+        # Default fallback (should not reach here for valid phase values)
+        return False, f"未知阶段{phase}，终止等待"
 
     def get_retry_strategy(self, error_count: int) -> Tuple[bool, int]:
         """获取重试策略"""
@@ -238,7 +263,7 @@ class PerformanceMonitor:
         self.metrics["errors"] = []
         self.metrics["latency_samples"] = []
 
-    def record_node_processed(self, latency: float = None):
+    def record_node_processed(self, latency: float | None = None):
         """记录节点处理完成"""
         self.metrics["processed_nodes"] += 1
         if latency is not None:
