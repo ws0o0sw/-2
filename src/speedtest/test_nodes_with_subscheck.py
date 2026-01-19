@@ -961,27 +961,16 @@ class SubsCheckTester:
                     break
 
                 # 使用select检查是否有可读数据
-                                    import select
-                
-                                    try:
-                                        byte = None
-                                        char = ""  # 初始化char变量
-                                        if self.process and self.process.stdout:
-                                            ready, _, _ = select.select([self.process.stdout], [], [], 0.5)
-                                            if ready:
-                                                # 读取数据
-                                                byte = self.process.stdout.read(1)
-                                                if byte:
-                                                    last_output_time = time.time()
-                                                    char = (
-                                                        byte.decode("utf-8", errors="ignore")
-                                                        if byte
-                                                        else ""
-                                                    )
-                
-                                                    # 添加调试输出：每100个字符显示一次
-                                                    if line_count % 100 == 0:
-                                                        print(f"[DEBUG] 已读取{line_count}行，当前字符: {repr(char[:50])}", flush=True)                            byte = self.process.stdout.read(1)
+                import select
+
+                try:
+                    byte = None
+                    char = ""  # 初始化char变量
+                    if self.process and self.process.stdout:
+                        ready, _, _ = select.select([self.process.stdout], [], [], 0.5)
+                        if ready:
+                            # 读取数据
+                            byte = self.process.stdout.read(1)
                             if byte:
                                 last_output_time = time.time()
                                 char = (
@@ -989,6 +978,10 @@ class SubsCheckTester:
                                     if byte
                                     else ""
                                 )
+
+                                # 添加调试输出：每100个字符显示一次
+                                if line_count % 100 == 0:
+                                    print(f"[DEBUG] 已读取{line_count}行，当前字符: {repr(char[:50])}", flush=True)
                                 if char == "\n":
                                     if last_line.strip():
                                         # 阶段2：显示所有输出行（调试用）
