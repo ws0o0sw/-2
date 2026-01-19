@@ -596,12 +596,12 @@ class SubsCheckTester:
                 timeout = self.timeout_manager.calculate_optimal_timeout(1, node_count)
                 # 转换为秒并添加缓冲
                 timeout_seconds = timeout / 1000
-                timeout_seconds = timeout_seconds * 2.5  # 2.5倍缓冲
-                # 对于大量节点，确保足够的超时时间
+                timeout_seconds = timeout_seconds * 2.0  # 2倍缓冲
+                # 对于大量节点，确保合理的超时时间
                 if node_count > 1000:
-                    timeout_seconds = max(timeout_seconds, 1800)  # 至少30分钟
+                    timeout_seconds = max(timeout_seconds, 1200)  # 最多20分钟
                 elif node_count > 500:
-                    timeout_seconds = max(timeout_seconds, 1200)  # 至少20分钟
+                    timeout_seconds = max(timeout_seconds, 900)  # 最多15分钟
                 else:
                     timeout_seconds = max(timeout_seconds, 900)  # 至少15分钟
 
@@ -845,7 +845,7 @@ class SubsCheckTester:
                 if phase == 1:
                     # 根据节点数量动态调整静默超时
                     if node_count > 1000:
-                        silent_timeout = 300  # 大量节点：5分钟
+                        silent_timeout = 180  # 大量节点：3分钟（提高效率）
                     elif node_count > 500:
                         silent_timeout = 240  # 中等数量：4分钟
                     else:
