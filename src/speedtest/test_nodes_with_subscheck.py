@@ -904,21 +904,20 @@ class SubsCheckTester:
                         else 0
                     )
 
-                    should_wait, wait_reason = (
-                        self.timeout_manager.should_continue_waiting(
-                            current_progress,
-                            remaining_nodes,
-                            int(silent_elapsed),
-                            phase,
-                            last_output_time,
+                    # 强制硬超时保护：如果总运行时间超过 25 分钟，强制终止
+                    total_elapsed = time.time() - start_time
+                    hard_timeout = 1500  # 25分钟硬超时
+                    if total_elapsed > hard_timeout:
+                        self.logger.warning(
+                            f"阶段{phase}达到硬超时限制({hard_timeout}秒/{hard_timeout / 60:.0f}分钟)，强制终止"
                         )
-                    )
-
-                    if should_wait:
-                        self.logger.info(f"智能等待: {wait_reason}")
-                        continue  # 继续等待
-                    else:
-                        self.logger.warning(f"智能终止: {wait_reason}")
+                        if self.process and self.process.poll() is None:
+                            self.process.terminate()
+                            try:
+                                self.process.wait(timeout=10)
+                            except:
+                                self.process.kill()
+                        break
 
                     self.logger.info(
                         f"检测到{silent_timeout}秒（{silent_timeout / 60:.0f}分钟）无新输出（当前进度: {current_progress:.1f}%）"
