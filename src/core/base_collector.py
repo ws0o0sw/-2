@@ -380,7 +380,7 @@ class BaseCollector(ABC):
             return None
 
     def _find_article_from_soup(self, soup, target_date=None):
-        """从BeautifulSoup对象中查找文章URL"""
+        """从BeautifulSoup对象中查找文章URL - 优先今天，其次最近的"""
         # 默认使用今天作为目标日期
         if target_date is None:
             target_date = datetime.now()
@@ -403,39 +403,65 @@ class BaseCollector(ABC):
         date_str_year_month = target_date.strftime("%Y-%m")  # 2026-01
         date_str_year_month_cn = f"{target_date.year}年{target_date.month:02d}月{target_date.day:02d}日"  # 2026年01月19日
 
-        # 优先通过日期匹配查找文章（最准确的方法）
+        # 收集所有包含日期的链接及其日期信息
+        dated_links = []
         all_links = soup.find_all("a", href=True)
+
         for link in all_links:
             href = link.get("href")
             text = link.get_text(strip=True)
 
-            # 检查链接文本或URL中是否包含今天的日期
-            if href and (
-                date_str in href
-                or date_str_no_padding in href  # 2026-1-19 格式
-                or date_str_alt in href
-                or date_str_alt_no_padding in href  # 2026/1/19 格式
-                or date_str_month_day_cn in text
-                or date_str_month_day_cn_alt in text
-                or date_str_year_month_cn in text
-                or date_str in text
-                or date_str_month_day in text
-                or date_str_month_day_no_padding in text  # 1-19 格式
-                or date_str_year_month in href
+            if not href:
+                continue
+
+            # 排除导航链接
+            if any(
+                x in href
+                for x in ["category", "tag", "page", "search", "about", "feed"]
             ):
-                # 排除导航链接（只选择文章链接）
-                if href and not any(
-                    x in href
-                    for x in ["category", "tag", "page", "search", "about", "feed"]
-                ):
-                    article_url = self._process_url(href)
-                    self.logger.info(f"通过日期匹配找到文章: {article_url}")
-                    return article_url
+                continue
+
+            # 尝试从链接或文本中提取日期
+            link_date = self._extract_date_from_text(href, text)
+
+            if link_date is not None:
+                # 计算与今天的天数差
+                days_diff = abs((link_date.date() - target_date.date()).days)
+
+                # 检查是否是今天的日期
+                is_today = link_date.date() == target_date.date()
+
+                dated_links.append(
+                    {
+                        "url": href,
+                        "date": link_date,
+                        "days_diff": days_diff,
+                        "is_today": is_today,
+                        "text": text,
+                    }
+                )
+
+        # 按日期排序：今天的在前，其次按日期新旧
+        dated_links.sort(key=lambda x: (not x["is_today"], x["days_diff"]))
+
+        # 如果有今天的日期，返回第一个
+        for item in dated_links:
+            if item["is_today"]:
+                article_url = self._process_url(item["url"])
+                self.logger.info(f"通过日期匹配找到今天的文章: {article_url}")
+                return article_url
+
+        # 如果没有今天的日期，返回最近的
+        if dated_links:
+            item = dated_links[0]
+            article_url = self._process_url(item["url"])
+            self.logger.info(
+                f"未找到今天的文章，使用最近的: {article_url} ({item['date'].strftime('%Y-%m-%d')})"
+            )
+            return article_url
 
         # 如果日期匹配失败，尝试特定选择器
         selectors = self.site_config.get("selectors", [])
-        links = []
-
         for selector in selectors:
             links = soup.select(selector)
             if links:
@@ -467,6 +493,48 @@ class BaseCollector(ABC):
 
         # 如果都没找到，返回None
         self.logger.warning(f"未找到文章链接")
+        return None
+
+    def _extract_date_from_text(self, href, text):
+        """从链接URL或文本中提取日期"""
+        import re
+        from datetime import datetime
+
+        # 常见日期格式模式
+        date_patterns = [
+            # URL中的日期格式
+            r"/(\d{4})-(\d{1,2})-(\d{1,2})/",  # /2026-1-19/ 或 /2026-01-19/
+            r"/(\d{4})/(\d{1,2})/(\d{1,2})/",  # /2026/1/19/ 或 /2026/01/19/
+            r"/(\d{4})-(\d{1,2})-(\d{1,2})\.",  # /2026-1-19. 或 /2026-01-19.
+            r"/(\d{4})/(\d{1,2})/(\d{1,2})\.",  # /2026/1/19. 或 /2026/01/19.
+            # 文本中的日期格式
+            r"(\d{4})年(\d{1,2})月(\d{1,2})日",  # 2026年1月19日
+            r"(\d{4})\.(\d{1,2})\.(\d{1,2})",  # 2026.01.19 或 2026.1.19
+            r"(\d{2})-(\d{1,2})-(\d{1,2})",  # 26-01-19 (假设21世纪)
+        ]
+
+        combined_text = f"{href} {text}"
+
+        for pattern in date_patterns:
+            match = re.search(pattern, combined_text)
+            if match:
+                try:
+                    groups = match.groups()
+                    if len(groups) == 3:
+                        year = int(groups[0])
+                        month = int(groups[1])
+                        day = int(groups[2])
+
+                        # 处理两位数年份
+                        if year < 100:
+                            year = 2000 + year
+
+                        # 验证日期有效性
+                        if 2020 <= year <= 2030 and 1 <= month <= 12 and 1 <= day <= 31:
+                            return datetime(year, month, day)
+                except (ValueError, TypeError):
+                    continue
+
         return None
 
     def _fetch_with_playwright(self, target_date=None):
