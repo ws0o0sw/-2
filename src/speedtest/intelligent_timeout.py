@@ -75,13 +75,13 @@ class IntelligentTimeoutManager:
                     return 12  # 中等数量+高延迟
             elif node_count <= 200:
                 if avg_latency < 200:
-                    return 12  # 较多数量+低延迟
+                    return 8  # 较多数量+低延迟
                 elif avg_latency < 300:
-                    return 8  # 较多数量+中等延迟
+                    return 6  # 较多数量+中等延迟
                 else:
-                    return 6  # 较多数量+高延迟，降低避免超时
+                    return 4  # 较多数量+高延迟，降低避免超时
             else:
-                return 15  # 大量节点时提高并发（原来只有3，太慢）
+                return 8  # 大量节点时：4核心机器建议并发8
         else:
             # 阶段2：媒体检测，需要更保守的并发
             if node_count <= 10:
