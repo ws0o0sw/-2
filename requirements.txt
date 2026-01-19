@@ -20,7 +20,6 @@ telethon>=1.42.0
 python-telegram-bot>=20.7
 
 # 加密和解码
-base64
 pycryptodome>=3.18.0
 
 # 配置和环境变量
