@@ -200,7 +200,7 @@ WEBSITES = {
     },
     "oneclash": {
         "name": "OneClash",
-        "url": "https://oneclash.cc/freenode",
+        "url": "https://www.oneclash.io/",
         "enabled": True,
         "collector_key": "oneclash",  # 对应收集器插件的关键字
         "selectors": [
@@ -208,8 +208,8 @@ WEBSITES = {
             "h2 a",
             ".entry-title a",
             "article h2 a",
-            'a[href*="/202"]',
-            'a[href*="/2025"]',
+            'a[href*="/free-node/"]',
+            'a[href*="/2026"]',
         ],
         "patterns": [
             r'https?://[^\s\'"]*\.txt[^\s\'"]*',
@@ -221,10 +221,17 @@ WEBSITES = {
     },
     "freev2raynode": {
         "name": "FreeV2rayNode",
-        "url": "https://www.freev2raynode.com/free-node-subscription/",
+        "url": "https://www.freev2raynode.com/",
         "enabled": True,
         "collector_key": "freev2raynode",  # 对应收集器插件的关键字
-        "selectors": [".post-title a", "h2 a", ".entry-title a", "article h2 a"],
+        "selectors": [
+            ".post-title a",
+            "h2 a",
+            ".entry-title a",
+            "article h2 a",
+            'a[href*="/free-node/"]',
+            'a[href*="/2026"]',
+        ],
         "patterns": [
             r'https?://[^\s\'"]*\.txt[^\s\'"]*',
             r'https?://[^\s\'"]*(?:sub|subscribe|link|api|node)[^\s\'"]*',
@@ -350,8 +357,8 @@ BASE64_PATTERNS = [
 # 需要使用浏览器访问且禁用代理的网站列表
 # 这些网站通过代理无法正常访问，需要使用浏览器直连访问
 # 当前配置：
-# - 浏览器直连：freeclashnode, mibei77, clashnodev2ray, wanzhuanmi, cfmem, telegeam, clashnodecc, clashgithub
-# - 代理访问：proxyqueen, datiya, oneclash, freev2raynode, eighty_five_la
+# - 浏览器直连：freeclashnode, mibei77, clashnodev2ray, wanzhuanmi, cfmem, telegeam, clashnodecc, clashgithub, oneclash, eighty_five_la
+# - 代理访问：proxyqueen, datiya, freev2raynode
 BROWSER_ONLY_SITES = [
     "freeclashnode",
     "mibei77",
@@ -359,6 +366,8 @@ BROWSER_ONLY_SITES = [
     "wanzhuanmi",
     "cfmem",
     "telegeam",
-    "clashnodecc",  # 文章页面需要浏览器直连访问
-    "clashgithub",  # 固定文章链接需要浏览器直连访问
+    "clashnodecc",     # 文章页面需要浏览器直连访问
+    "clashgithub",     # 固定文章链接需要浏览器直连访问
+    "oneclash",        # 代理访问无法获取完整内容
+    "eighty_five_la",  # Cloudflare 保护，需要浏览器绕过
 ]
