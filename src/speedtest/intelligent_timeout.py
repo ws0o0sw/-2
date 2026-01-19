@@ -26,7 +26,7 @@ class IntelligentTimeoutManager:
 
         # 根据节点数量增加超时时间
         if node_count > 1000:
-            base_timeout *= 1.5  # 大量节点适当增加超时，但不过度
+            base_timeout *= 2  # 大量节点需要更长时间
         elif node_count > 500:
             base_timeout *= 1.5
 
@@ -81,7 +81,7 @@ class IntelligentTimeoutManager:
                 else:
                     return 6  # 较多数量+高延迟，降低避免超时
             else:
-                return 5  # 大量时适当提高并发，确保测试速度
+                return 3  # 大量时进一步降低并发，确保稳定
         else:
             # 阶段2：媒体检测，需要更保守的并发
             if node_count <= 10:
