@@ -1158,7 +1158,7 @@ class SubsCheckTester:
             self.logger.info(f"等待阶段{phase}进程结束...")
 
             # 智能等待：定期检查输出文件，如果文件已更新则认为任务完成
-            max_wait_time = 120
+            max_wait_time = max(timeout * 2, 300)  # 至少等待5分钟或超时时间的2倍
             check_interval = 10
             elapsed = 0
 
