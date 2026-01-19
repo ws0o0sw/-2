@@ -41,6 +41,9 @@ FastAPI>=0.104.1
 # WebSocket支持
 websockets>=11.0.0
 
+# 浏览器自动化
+playwright>=1.40.0
+
 # 测速工具
 # 注意：subs-check 需要单独安装，参考：https://github.com/lnd-db/subs-check
 
