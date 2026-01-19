@@ -81,7 +81,7 @@ class IntelligentTimeoutManager:
                 else:
                     return 6  # 较多数量+高延迟，降低避免超时
             else:
-                return 3  # 大量时进一步降低并发，确保稳定
+                return 15  # 大量节点时提高并发（原来只有3，太慢）
         else:
             # 阶段2：媒体检测，需要更保守的并发
             if node_count <= 10:
