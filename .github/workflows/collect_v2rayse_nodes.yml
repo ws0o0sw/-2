@@ -69,8 +69,8 @@ jobs:
           # 提交更改
           git commit -m "$commit_msg"
 
-          # 只推送这个提交
-          git push origin HEAD:main
+          # 推送到远程
+          git push
           echo "✅ 成功提交 $node_count 个V2RaySE节点"
         fi
       continue-on-error: true
