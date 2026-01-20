@@ -44,6 +44,8 @@ class V2RaySECollector:
         self.url = "https://www.v2rayse.com/free-node"
         self.result_dir = project_root / "result"
         self.result_file = self.result_dir / "v2rayse.txt"
+        self.debug_dir = project_root / "data" / "debug"
+        self.debug_dir.mkdir(exist_ok=True)
 
     async def collect_nodes(self):
         """收集节点的主函数"""
@@ -71,7 +73,7 @@ class V2RaySECollector:
                     )
 
                 # 保存初始页面截图用于调试
-                await page.screenshot(path="debug_initial.png")
+                await page.screenshot(path=str(self.debug_dir / "debug_initial.png"))
                 self.logger.info("保存初始页面截图: debug_initial.png")
 
                 # 处理可能的广告弹窗
@@ -126,18 +128,18 @@ class V2RaySECollector:
                 await page.wait_for_timeout(15000)
 
                 # 保存等待后的页面截图
-                await page.screenshot(path="debug_after_wait.png")
+                await page.screenshot(path=str(self.debug_dir / "debug_after_wait.png"))
                 self.logger.info("保存等待后页面截图: debug_after_wait.png")
 
                 # 保存页面HTML内容用于分析
                 page_html = await page.content()
-                with open("debug_page.html", "w", encoding="utf-8") as f:
+                with open(self.debug_dir / "debug_page.html", "w", encoding="utf-8") as f:
                     f.write(page_html)
                 self.logger.info("保存页面HTML: debug_page.html")
 
                 # 也保存页面文本内容
                 page_text = await page.inner_text("body")
-                with open("debug_page_text.txt", "w", encoding="utf-8") as f:
+                with open(self.debug_dir / "debug_page_text.txt", "w", encoding="utf-8") as f:
                     f.write(page_text)
                 self.logger.info("保存页面文本: debug_page_text.txt")
 
@@ -193,7 +195,7 @@ class V2RaySECollector:
                                 self.logger.info(f"成功勾选 {checked_count} 个复选框（共{count}个）")
                                 
                                 # 保存勾选后的截图
-                                await page.screenshot(path="debug_after_check.png")
+                                await page.screenshot(path=str(self.debug_dir / "debug_after_check.png"))
                                 self.logger.info("保存勾选后页面截图: debug_after_check.png")
                             except Exception as e:
                                 self.logger.warning(f"勾选复选框失败: {e}")
@@ -238,7 +240,7 @@ class V2RaySECollector:
                     if global_copy_found:
                         self.logger.info("已点击全局复制按钮")
                         # 保存点击后的截图
-                        await page.screenshot(path="debug_after_copy.png")
+                        await page.screenshot(path=str(self.debug_dir / "debug_after_copy.png"))
                         self.logger.info("保存复制后页面截图: debug_after_copy.png")
                     else:
                         self.logger.info("未找到全局复制按钮，继续查找操作按钮")
@@ -318,7 +320,7 @@ class V2RaySECollector:
                                         )  # 等待菜单显示
 
                                         # 保存点击后的截图
-                                        await page.screenshot(path="debug_click.png")
+                                        await page.screenshot(path=str(self.debug_dir / "debug_click.png"))
                                         self.logger.info(
                                             "保存点击后页面截图: debug_click.png"
                                         )
@@ -350,7 +352,7 @@ class V2RaySECollector:
 
                                                     # 保存选中菜单悬浮后的截图
                                                     await page.screenshot(
-                                                        path="debug_select_hover.png"
+                                                        path=str(self.debug_dir / "debug_select_hover.png")
                                                     )
                                                     self.logger.info(
                                                         "保存选中菜单悬浮后截图: debug_select_hover.png"
@@ -390,7 +392,7 @@ class V2RaySECollector:
                                         self.logger.warning(f"点击操作按钮失败: {e}")
 
                                 # 保存悬浮后的截图（无论是否点击）
-                                await page.screenshot(path="debug_hover.png")
+                                await page.screenshot(path=str(self.debug_dir / "debug_hover.png"))
                                 self.logger.info("保存悬浮后页面截图: debug_hover.png")
 
                                 # 也查找所有可见的按钮，看看有哪些
