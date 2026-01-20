@@ -173,6 +173,7 @@ class V2RaySECollector:
                             self.logger.info(f"找到 {count} 个复选框，尝试全部勾选")
                             try:
                                 # 勾选所有复选框
+                                checked_count = 0
                                 for i in range(count):
                                     try:
                                         checkbox = all_checkboxes.nth(i)
@@ -180,12 +181,17 @@ class V2RaySECollector:
                                         is_checked = await checkbox.is_checked()
                                         if not is_checked:
                                             await checkbox.check()
+                                            checked_count += 1
                                             self.logger.debug(f"勾选第 {i} 个复选框")
                                     except Exception as e:
                                         self.logger.debug(f"勾选第 {i} 个复选框失败: {e}")
                                         continue
                                 select_all_clicked = True
-                                self.logger.info(f"成功勾选所有 {count} 个复选框")
+                                self.logger.info(f"成功勾选 {checked_count} 个复选框（共{count}个）")
+                                
+                                # 保存勾选后的截图
+                                await page.screenshot(path="debug_after_check.png")
+                                self.logger.info("保存勾选后页面截图: debug_after_check.png")
                             except Exception as e:
                                 self.logger.warning(f"勾选复选框失败: {e}")
                         else:
@@ -198,14 +204,14 @@ class V2RaySECollector:
                 try:
                     # 查找全局复制/导出按钮（通常在页面顶部或表格上方）
                     global_copy_selectors = [
-                        'button:contains("复制选中")',
-                        'button:contains("复制")',
-                        'button:contains("导出选中")',
-                        'button:contains("导出")',
-                        'button:contains("复制订阅")',
-                        'a:contains("复制选中")',
-                        'a:contains("复制")',
-                        'a:contains("导出")',
+                        'button:has-text("复制选中")',
+                        'button:has-text("复制")',
+                        'button:has-text("导出选中")',
+                        'button:has-text("导出")',
+                        'button:has-text("复制订阅")',
+                        'a:has-text("复制选中")',
+                        'a:has-text("复制")',
+                        'a:has-text("导出")',
                         '[data-action="copy-selected"]',
                         '[data-action="export-selected"]',
                         ".copy-selected-btn",
@@ -228,6 +234,9 @@ class V2RaySECollector:
 
                     if global_copy_found:
                         self.logger.info("已点击全局复制按钮")
+                        # 保存点击后的截图
+                        await page.screenshot(path="debug_after_copy.png")
+                        self.logger.info("保存复制后页面截图: debug_after_copy.png")
                     else:
                         self.logger.info("未找到全局复制按钮，继续查找操作按钮")
 
@@ -238,11 +247,10 @@ class V2RaySECollector:
                 try:
                     # 查找操作按钮（可能是"操作"列或特定的操作按钮）
                     operation_selectors = [
-                        'button:contains("操作")',
+                        'button:has-text("操作")',
                         ".operation-btn",
                         "#operation-btn",
                         "[data-operation]",
-                        'button:has-text("操作")',
                     ]
 
                     operation_found = False
@@ -252,19 +260,19 @@ class V2RaySECollector:
                             if await operation_btn.is_visible():
                                 # 查找转换选项 - 尝试多种选择器
                                 convert_selectors = [
-                                    'button:contains("转换")',
-                                    'a:contains("转换")',
+                                    'button:has-text("转换")',
+                                    'a:has-text("转换")',
                                     '[data-action="convert"]',
                                     ".convert-option",
-                                    'button:contains("V2RAY")',
-                                    'button:contains("转V2RAY")',
-                                    'button:contains("导出")',
-                                    'a:contains("导出")',
+                                    'button:has-text("V2RAY")',
+                                    'button:has-text("转V2RAY")',
+                                    'button:has-text("导出")',
+                                    'a:has-text("导出")',
                                     '[data-format="v2ray"]',
-                                    '.menu-item:contains("转换")',
-                                    '.dropdown-item:contains("转换")',
-                                    'button:contains("复制")',
-                                    'a:contains("复制")',
+                                    '.menu-item:has-text("转换")',
+                                    '.dropdown-item:has-text("转换")',
+                                    'button:has-text("复制")',
+                                    'a:has-text("复制")',
                                     ".copy-option",
                                     '[data-action="copy"]',
                                 ]
@@ -314,8 +322,8 @@ class V2RaySECollector:
 
                                         # 查找选中操作菜单项
                                         select_menu_selectors = [
-                                            'button:contains("选中")',
-                                            'a:contains("选中")',
+                                            'button:has-text("选中")',
+                                            'a:has-text("选中")',
                                             '[data-action="select"]',
                                             ".select-menu",
                                             ".select-option",
