@@ -144,12 +144,14 @@ class V2RaySECollector:
                 # 查找表头的全选复选框
                 try:
                     # 表头的全选复选框通常在th元素中
+                    # 注意：V2RaySE使用的是自定义复选框（button[role="checkbox"]），不是标准的input[type="checkbox"]
                     select_all_selectors = [
-                        'th input[type="checkbox"]',
-                        'thead input[type="checkbox"]',
-                        '.table-header input[type="checkbox"]',
-                        '#table-header input[type="checkbox"]',
-                        'input[type="checkbox"][data-select-all]',
+                        'th button[role="checkbox"]',
+                        'thead button[role="checkbox"]',
+                        '.table-header button[role="checkbox"]',
+                        '#table-header button[role="checkbox"]',
+                        'button[role="checkbox"][aria-label*="全选"]',
+                        'button[role="checkbox"][aria-label*="select"]',
                     ]
 
                     select_all_clicked = False
@@ -157,9 +159,10 @@ class V2RaySECollector:
                         try:
                             element = page.locator(selector).first
                             if await element.is_visible():
-                                await element.check()
-                                self.logger.info(f"勾选表头全选复选框: {selector}")
+                                await element.click()
+                                self.logger.info(f"点击表头全选复选框: {selector}")
                                 select_all_clicked = True
+                                await page.wait_for_timeout(1000)  # 等待选择完成
                                 break
                         except Exception as e:
                             self.logger.debug(f"尝试 {selector} 失败: {e}")
@@ -167,10 +170,10 @@ class V2RaySECollector:
 
                     if not select_all_clicked:
                         # 如果没找到表头复选框，尝试查找页面中的所有复选框并全部勾选
-                        all_checkboxes = page.locator('input[type="checkbox"]')
+                        all_checkboxes = page.locator('button[role="checkbox"]')
                         count = await all_checkboxes.count()
                         if count > 0:
-                            self.logger.info(f"找到 {count} 个复选框，尝试全部勾选")
+                            self.logger.info(f"找到 {count} 个自定义复选框，尝试全部勾选")
                             try:
                                 # 勾选所有复选框
                                 checked_count = 0
@@ -178,9 +181,9 @@ class V2RaySECollector:
                                     try:
                                         checkbox = all_checkboxes.nth(i)
                                         # 检查是否已勾选，避免重复点击
-                                        is_checked = await checkbox.is_checked()
-                                        if not is_checked:
-                                            await checkbox.check()
+                                        aria_checked = await checkbox.get_attribute("aria-checked")
+                                        if aria_checked == "false":
+                                            await checkbox.click()
                                             checked_count += 1
                                             self.logger.debug(f"勾选第 {i} 个复选框")
                                     except Exception as e:
