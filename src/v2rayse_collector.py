@@ -212,52 +212,59 @@ class V2RaySECollector:
                     if await node_operation_btn.is_visible():
                         await node_operation_btn.click()
                         self.logger.info("点击节点操作按钮")
-                        await page.wait_for_timeout(2000)  # 等待菜单显示
+                        await page.wait_for_timeout(1000)  # 等待菜单显示
                         
-                        # 保存点击后的截图
-                        await page.screenshot(path=str(self.debug_dir / "debug_after_click.png"))
-                        self.logger.info("保存点击后页面截图: debug_after_click.png")
-                        
-                        # 保存点击后的页面HTML
-                        page_html = await page.content()
-                        with open(self.debug_dir / "debug_after_click.html", "w", encoding="utf-8") as f:
-                            f.write(page_html)
-                        self.logger.info("保存点击后页面HTML: debug_after_click.html")
-                        
-                        # 查找并点击复制按钮
-                        copy_selectors = [
-                            'button:has-text("复制")',
-                            'button:has-text("复制选中")',
-                            'button:has-text("复制订阅")',
-                            'a:has-text("复制")',
-                            'a:has-text("复制选中")',
-                            '[data-action="copy"]',
-                            '[data-action="copy-selected"]',
-                            'div:has-text("复制")',
-                            '.copy-btn',
+                        # 查找"选中操作"按钮
+                        select_operation_selectors = [
+                            'button:has-text("选中操作")',
+                            'a:has-text("选中操作")',
                         ]
                         
-                        copy_found = False
-                        for selector in copy_selectors:
+                        select_operation_found = False
+                        for selector in select_operation_selectors:
                             try:
-                                copy_btn = page.locator(selector).first
-                                if await copy_btn.is_visible():
-                                    await copy_btn.click()
-                                    self.logger.info(f"点击复制按钮: {selector}")
-                                    copy_found = True
-                                    await page.wait_for_timeout(2000)  # 等待复制完成
-                                    break
+                                select_operation_btn = page.locator(selector).first
+                                if await select_operation_btn.is_visible():
+                                    # 悬浮到"选中操作"按钮
+                                    await select_operation_btn.hover()
+                                    self.logger.info(f"悬浮到选中操作按钮: {selector}")
+                                    await page.wait_for_timeout(1000)  # 等待子菜单显示
+                                    
+                                    # 查找并点击"复制"按钮
+                                    copy_selectors = [
+                                        'button:has-text("复制")',
+                                        'a:has-text("复制")',
+                                    ]
+                                    
+                                    copy_found = False
+                                    for copy_selector in copy_selectors:
+                                        try:
+                                            copy_btn = page.locator(copy_selector).first
+                                            if await copy_btn.is_visible():
+                                                await copy_btn.click()
+                                                self.logger.info(f"点击复制按钮: {copy_selector}")
+                                                copy_found = True
+                                                await page.wait_for_timeout(2000)  # 等待复制完成
+                                                break
+                                        except Exception as e:
+                                            self.logger.debug(f"尝试 {copy_selector} 失败: {e}")
+                                            continue
+                                    
+                                    if copy_found:
+                                        self.logger.info("已成功点击复制按钮")
+                                        # 保存点击后的截图
+                                        await page.screenshot(path=str(self.debug_dir / "debug_after_copy.png"))
+                                        self.logger.info("保存复制后页面截图: debug_after_copy.png")
+                                        select_operation_found = True
+                                        break
+                                    else:
+                                        self.logger.warning("未找到复制按钮")
                             except Exception as e:
                                 self.logger.debug(f"尝试 {selector} 失败: {e}")
                                 continue
                         
-                        if copy_found:
-                            self.logger.info("已成功点击复制按钮")
-                            # 保存点击后的截图
-                            await page.screenshot(path=str(self.debug_dir / "debug_after_copy.png"))
-                            self.logger.info("保存复制后页面截图: debug_after_copy.png")
-                        else:
-                            self.logger.warning("未找到复制按钮，尝试从页面源码提取")
+                        if not select_operation_found:
+                            self.logger.warning("未找到选中操作按钮")
                     else:
                         self.logger.warning("未找到节点操作按钮")
 
