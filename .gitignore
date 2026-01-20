@@ -67,3 +67,6 @@ subscheck/config/config.yaml
 
 # Output files (test results)
 result/output/
+
+# Raw HTML files (temporary)
+data/raw/
