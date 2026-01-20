@@ -166,21 +166,73 @@ class V2RaySECollector:
                             continue
 
                     if not select_all_clicked:
-                        # 如果没找到表头复选框，尝试查找页面中的所有复选框，第一个通常是全选
+                        # 如果没找到表头复选框，尝试查找页面中的所有复选框并全部勾选
                         all_checkboxes = page.locator('input[type="checkbox"]')
                         count = await all_checkboxes.count()
                         if count > 0:
+                            self.logger.info(f"找到 {count} 个复选框，尝试全部勾选")
                             try:
-                                await all_checkboxes.first.check()
-                                self.logger.info("勾选第一个复选框（可能是全选）")
+                                # 勾选所有复选框
+                                for i in range(count):
+                                    try:
+                                        checkbox = all_checkboxes.nth(i)
+                                        # 检查是否已勾选，避免重复点击
+                                        is_checked = await checkbox.is_checked()
+                                        if not is_checked:
+                                            await checkbox.check()
+                                            self.logger.debug(f"勾选第 {i} 个复选框")
+                                    except Exception as e:
+                                        self.logger.debug(f"勾选第 {i} 个复选框失败: {e}")
+                                        continue
                                 select_all_clicked = True
+                                self.logger.info(f"成功勾选所有 {count} 个复选框")
                             except Exception as e:
-                                self.logger.warning(f"勾选第一个复选框失败: {e}")
+                                self.logger.warning(f"勾选复选框失败: {e}")
                         else:
                             self.logger.warning("未找到任何复选框")
 
                 except Exception as e:
                     self.logger.error(f"选择节点时出错: {e}")
+
+                # 在勾选所有复选框后，尝试查找全局的复制/导出按钮
+                try:
+                    # 查找全局复制/导出按钮（通常在页面顶部或表格上方）
+                    global_copy_selectors = [
+                        'button:contains("复制选中")',
+                        'button:contains("复制")',
+                        'button:contains("导出选中")',
+                        'button:contains("导出")',
+                        'button:contains("复制订阅")',
+                        'a:contains("复制选中")',
+                        'a:contains("复制")',
+                        'a:contains("导出")',
+                        '[data-action="copy-selected"]',
+                        '[data-action="export-selected"]',
+                        ".copy-selected-btn",
+                        ".export-selected-btn",
+                    ]
+
+                    global_copy_found = False
+                    for selector in global_copy_selectors:
+                        try:
+                            copy_btn = page.locator(selector).first
+                            if await copy_btn.is_visible():
+                                await copy_btn.click()
+                                self.logger.info(f"点击全局复制按钮: {selector}")
+                                global_copy_found = True
+                                await page.wait_for_timeout(2000)  # 等待复制完成
+                                break
+                        except Exception as e:
+                            self.logger.debug(f"尝试 {selector} 失败: {e}")
+                            continue
+
+                    if global_copy_found:
+                        self.logger.info("已点击全局复制按钮")
+                    else:
+                        self.logger.info("未找到全局复制按钮，继续查找操作按钮")
+
+                except Exception as e:
+                    self.logger.warning(f"查找全局复制按钮时出错: {e}")
 
                 # 查找节点操作按钮并悬浮触发菜单
                 try:
@@ -339,7 +391,7 @@ class V2RaySECollector:
                                     f"找到 {button_count} 个可见的按钮/链接"
                                 )
 
-                                for i in range(min(button_count, 20)):  # 检查前20个
+                                for i in range(button_count):  # 检查所有按钮
                                     try:
                                         btn_text = await all_visible_buttons.nth(
                                             i
