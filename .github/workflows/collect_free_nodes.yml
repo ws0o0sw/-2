@@ -39,7 +39,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r src/config/requirements.txt
+        pip install -r requirements.txt
         pip install pysocks  # 支持 SOCKS5 代理
         pip install playwright>=1.40.0
         playwright install chromium  # 安装Chromium浏览器
