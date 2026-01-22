@@ -261,6 +261,28 @@ WEBSITES = {
             r"trojan://[^\s\n\r]+",
         ],
     },
+    "xinye": {
+        "name": "Xinye",
+        "url": "https://www.xinye.eu.org/",
+        "enabled": True,
+        "collector_key": "xinye",  # 对应收集器插件的关键字
+        "selectors": [
+            ".post-title a",
+            "h2 a",
+            ".entry-title a",
+            "article h2 a",
+            'a[href*="/202"]',
+            'a[href*="/2025"]',
+            'a[href*="/2026"]',
+        ],
+        "patterns": [
+            r'https?://raw\.githubusercontent\.com/[^\s\'"]+\.txt',
+            r'https?://[^\s\'"]*\.txt[^\s\'"]*',
+            r"vmess://[^\s\n\r]+",
+            r"vless://[^\s\n\r]+",
+            r"trojan://[^\s\n\r]+",
+        ],
+    },
 }
 
 # 通用选择器（当特定网站选择器失败时使用）
@@ -370,4 +392,5 @@ BROWSER_ONLY_SITES = [
     "clashgithub",  # 固定文章链接需要浏览器直连访问
     "oneclash",  # 代理访问无法获取完整内容
     "la",  # Cloudflare 保护，需要浏览器绕过（使用 collector_key "la"）
+    "xinye",  # Blogger 平台，需要浏览器直连访问
 ]

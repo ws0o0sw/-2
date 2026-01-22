@@ -114,7 +114,7 @@ https://raw.githubusercontent.com/yafeisun/v2raynode/refs/heads/main/result/kari
 
 | 指标 | 数值 |
 |-----|------|
-| 🌐 支持网站 | 13个 |
+| 🌐 支持网站 | 14个 |
 | ⚡ 平均收集时间 | ~4分钟 |
 | 📦 平均节点数量 | ~2,000个/天 |
 | ✅ 节点可用率 | ~60-80% |
@@ -127,7 +127,7 @@ https://raw.githubusercontent.com/yafeisun/v2raynode/refs/heads/main/result/kari
 
 ### 支持的网站
 
-项目支持以下13个免费节点源（自动按顺序收集）:
+项目支持以下14个免费节点源（自动按顺序收集）:
 
 | 序号 | 网站名称 | 网站地址 | 特点 |
 |-----|---------|---------|------|
@@ -144,6 +144,7 @@ https://raw.githubusercontent.com/yafeisun/v2raynode/refs/heads/main/result/kari
 | 11 | OneClash | oneclash.cc | Clash节点 |
 | 12 | FreeV2rayNode | freev2raynode.com | V2Ray专用 |
 | 13 | 85LA | 85la.com | 综合资源 |
+| 14 | Xinye | xinye.eu.org | GitHub raw 源 |
 
 详细的网站配置请查看: [config/websites.py](config/websites.py)
 
