@@ -23,6 +23,7 @@ try:
     from .la import LaCollector
     from .oneclash import OneClashCollector
     from .xinye import XinyeCollector
+    from .stairnode import StairNodeCollector
 except ImportError as e:
     print(f"导入收集器模块失败: {e}")
     sys.exit(1)
@@ -41,6 +42,7 @@ COLLECTOR_MAPPING = {
     "freev2raynode": FreeV2rayNodeCollector,
     "la": LaCollector,
     "xinye": XinyeCollector,
+    "stairnode": StairNodeCollector,
 }
 
 

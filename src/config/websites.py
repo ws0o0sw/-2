@@ -295,6 +295,18 @@ WEBSITES = {
             r"trojan://[^\s\n\r]+",
         ],
     },
+    "stairnode": {
+        "name": "StairNode",
+        "url": "https://www.stairnode.com/freenode",
+        "enabled": True,
+        "collector_key": "stairnode",  # 对应收集器插件的关键字
+        "selectors": [
+            'a[href*="/archives/"]',
+        ],
+        "patterns": [
+            r'http://stairnode\.cczzuu\.top/node/\d{8}-(?:v2ray|clash)\.(?:txt|yaml)',
+        ],
+    },
 }
 
 # 通用选择器（当特定网站选择器失败时使用）
