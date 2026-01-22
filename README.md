@@ -127,20 +127,20 @@ https://raw.githubusercontent.com/yafeisun/v2raynode/refs/heads/main/result/kari
 
 | 序号 | 网站名称 | 网站地址 | 特点 |
 |-----|---------|---------|------|
-| 1 | FreeClashNode | freeclashnode.com | Clash节点 |
-| 2 | 米贝节点 | mibei77.com | 中文节点 |
-| 3 | ClashNodeV2Ray | clashnodev2ray.github.io | GitHub源 |
-| 4 | ProxyQueen | proxyqueen.top | 代理节点 |
-| 5 | 玩转迷 | wanzhuanmi.com | 综合节点 |
-| 6 | CFMem | cfmem.com | Cloudflare节点 |
-| 7 | ClashNodeCC | clashnode.cc | Clash节点 |
-| 8 | Datiya | datiya.com | 免费节点 |
-| 9 | Telegeam | telegeam.github.io | Telegram分享 |
-| 10 | ClashGithub | clashgithub.com | GitHub节点 |
-| 11 | OneClash | oneclash.cc | Clash节点 |
-| 12 | FreeV2rayNode | freev2raynode.com | V2Ray专用 |
-| 13 | 85LA | 85la.com | 综合资源 |
-| 14 | Xinye | xinye.eu.org | GitHub raw 源 |
+| 1 | FreeClashNode | https://www.freeclashnode.com/free-node/ | Clash节点 |
+| 2 | 米贝节点 | https://www.mibei77.com/ | 中文节点 |
+| 3 | ClashNodeV2Ray | https://clashnodev2ray.github.io/ | GitHub源 |
+| 4 | ProxyQueen | https://www.proxyqueen.top/ | 代理节点 |
+| 5 | 玩转迷 | https://wanzhuanmi.com/ | 综合节点 |
+| 6 | CFMem | https://www.cfmem.com/ | Cloudflare节点 |
+| 7 | ClashNodeCC | https://clashnode.cc/ | Clash节点 |
+| 8 | Datiya | https://free.datiya.com/ | 免费节点 |
+| 9 | Telegeam | https://telegeam.github.io/clashv2rayshare/ | Telegram分享 |
+| 10 | ClashGithub | https://clashgithub.com/ | GitHub节点 |
+| 11 | OneClash | https://oneclash.cc/freenode | Clash节点 |
+| 12 | FreeV2rayNode | https://www.freev2raynode.com/ | V2Ray专用 |
+| 13 | 85LA | https://www.85la.com/internet-access/free-network-nodes | 综合资源 |
+| 14 | Xinye | https://www.xinye.eu.org/ | GitHub raw 源 |
 
 详细的网站配置请查看: [config/websites.py](config/websites.py)
 
