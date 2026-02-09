@@ -1,19 +1,16 @@
-vless://80.66.85.115:8443?type=tcp&security=none#🇷🇺_RU_俄罗斯->🇺🇸_US_美国
-vless://176.222.55.24:8443?type=tcp&security=none#🇳🇱_NL_荷兰
-vless://45.66.163.75:443?type=tcp&security=none#🇺🇸_US_美国
-vless://45.131.209.130:8443?type=tcp&security=none#🇳🇱_NL_荷兰->🇺🇸_US_美国
-vless://46.8.224.150:8443?type=tcp&security=none#🇷🇺_RU_俄罗斯->🇺🇸_US_美国_1
-vless://ai.boostplayer.goodofwar.4b3app.com:2096?type=tcp&security=none#🇬🇧_GB_英国
-vless://104.18.32.47:8443?type=tcp&security=none#🇺🇸_US_美国_1
-vless://de.griffon-guard.com:8443?type=tcp&security=none#🇺🇸_US_美国->🇬🇧_GB_英国
-vless://205.172.56.151:443?type=tcp&security=none#🇺🇸_US_美国_2
-vless://cdn.halazzon.ir:2053?type=tcp&security=none#🇺🇸_US_美国->🇫🇷_FR_法国
-vless://104.19.61.241:443?type=tcp&security=none#🇺🇸_US_美国_3
-vless://185.170.153.53:443?type=tcp&security=none#🇬🇧_GB_英国_1
-vless://vip2.kaixincloud.top:2096?type=tcp&security=none#🇺🇸_US_美国->🇫🇷_FR_法国_1
-vless://192.193.104.25:443?type=tcp&security=none#🇺🇸_US_美国_4
-vless://199.34.229.238:2096?type=tcp&security=none#🇺🇸_US_美国_5
-vless://116.93.199.28:12136?type=tcp&security=none#🇰🇷_KR_韩国->🇰🇵_KP_朝鲜
-vless://103.136.68.86:443?type=tcp&security=none#🇬🇧_GB_英国->🇺🇸_US_美国
-vmess://tgju.org:8080#🇺🇸_US_美国_6
-vless://45.43.76.103:443?type=tcp&security=none#🇺🇸_US_美国->🇱🇻_LV_拉脱维亚
+vmess://128.199.128.117:443#🇸🇬_SG_新加坡
+vmess://172.236.154.50:443#🇺🇸_US_美国->🇸🇬_SG_新加坡
+vless://104.18.151.172:443?type=tcp&security=none#🇺🇸_US_美国
+vless://nl.mobilezahra.lat:443?type=tcp&security=none#🇳🇱_NL_荷兰
+vless://37.120.167.164:443?type=tcp&security=none#🇩🇪_DE_德国
+vless://142.93.101.216:7008?type=tcp&security=none#🇺🇸_US_美国_1
+vless://172.67.153.156:8443?type=tcp&security=none#🇺🇸_US_美国_2
+vless://vip3.kaixincloud.top:2053?type=tcp&security=none#🇺🇸_US_美国->🇳🇱_NL_荷兰
+vless://de.griffon-guard.com:8443?type=tcp&security=none#🇺🇸_US_美国->🇩🇪_DE_德国
+vless://172.66.128.70:2052?type=tcp&security=none#🇺🇸_US_美国_3
+trojan://52.195.8.127:3373#🇯🇵_JP_日本->🇨🇳_CN_中国
+vless://192.200.160.228:2083?type=tcp&security=none#🇺🇸_US_美国->🇩🇪_DE_德国_1
+vless://vip2.kaixincloud.top:443?type=tcp&security=none#🇺🇸_US_美国_4
+vless://144.31.92.240:8443?type=tcp&security=none#🇺🇸_US_美国->🇬🇧_GB_英国
+vless://103.21.244.201:2087?type=tcp&security=none#🇺🇸_US_美国_5
+vless://185.18.250.252:443?type=tcp&security=none#🇪🇸_ES_西班牙->🏳️_unKnow_未知
